@@ -37,7 +37,7 @@ def train_fn(data_loader, model, optimizer, device, scheduler):
         losses.update(loss.item(), ids.size(0))
         tk0.set_postfix(loss=losses.avg)
 
-def train_fn(data_loader, model, optimizer, device, scheduler):
+def eval_fn(data_loader, model, optimizer, device, scheduler):
     model.eval()
     fin_output_start = []
     fin_output_end = []
@@ -114,7 +114,7 @@ def train_fn(data_loader, model, optimizer, device, scheduler):
             mask[mj] = 1
 
         output_tokens = [x for p, x in enumerate(context_tokens.split()) if mask[p] == 1]
-        output_tokens = [x for x in output_tokens if x is not in ("[CLS]", "[SEP]")]
+        output_tokens = [x for x in output_tokens if not x in ("[CLS]", "[SEP]")]
 
         final_output = ""
         for ot in output_tokens:

@@ -1,11 +1,12 @@
+import config
 import engine
 import dataset
 import pandas as pd
 import torch
 import torch.nn as nn
-import config
-
-
+import transformers
+from model import BERTBaseUncased
+from sklearn import model_selection
 
 def run():
     dfx = pd.read_csv(config.TRAINING_FILE).dropna().reset_index(drop=True)
@@ -24,13 +25,11 @@ def run():
         question = df_train.question.values,
         answer = df_train.answer.values,
         answer_start = df_train.answer_start.values,
-        tokenizer = TOKENIZER,
-        max_len = MAX_LEN
     )
 
     train_data_loader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=TRAIN_BATCH_SIZE,
+        batch_size=config.TRAIN_BATCH_SIZE,
         num_workers=4
     )
 
@@ -39,18 +38,16 @@ def run():
         question = df_valid.question.values,
         answer = df_valid.answer.values,
         answer_start = df_valid.answer_start.values,
-        tokenizer = TOKENIZER,
-        max_len = MAX_LEN
     )
 
     valid_data_loader = torch.utils.data.DataLoader(
         valid_dataset,
-        batch_size=VALID_BATCH_SIZE,
+        batch_size=config.VALID_BATCH_SIZE,
         num_workers=1
     )
 
-    device = torch.device("cuda")
-    model = BERTBaseUncased(PRE_TRAINED_MODEL_NAME)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    model = BERTBaseUncased(config.BERT_PATH)
     model.to(device)
 
     param_optimizer = list(model.named_parameters())
@@ -60,7 +57,7 @@ def run():
         {'params': [p for n,p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0},
     ]
 
-    num_train_steps = int(len(df_train) / TRAIN_BATCH_SIZE * EPOCHS)
+    num_train_steps = int(len(df_train) / config.TRAIN_BATCH_SIZE * config.EPOCHS)
     optimizer = torch.optim.AdamW(optimizer_parameters, lr=3e-5)
     scheduler = transformers.optimization.get_linear_schedule_with_warmup(
         optimizer, 
@@ -77,6 +74,7 @@ def run():
         print(f'Jaccard score {jaccard}')
         if jaccard > best_jaccard:
             torch.save(model.state_dict(), config.MODEL_PATH)
+            best_jaccard = jaccard
 
 
 if __name__ == "__main__":
